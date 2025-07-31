@@ -10,23 +10,28 @@ get_flags(){
     for i in $flags_default;do
         flags_value[${i%$delimiter*}]=${i#*$delimiter}
     done
-    echo ${!flags_value[@]}
+    #
     for i in $flags_user;do
         flag_name=${i%$delimiter*}
         flag_value=${i#*$delimiter}
         if [[ ! " ${!flags_value[@]} " =~ [[:space:]]${flag_name}[[:space:]] ]];then
-            echo $flag_name
             continue
         fi
         flags_value[$flag_name]=${flag_value}
     done
-
-
+    #
     for i in $flags_default;do
         flag_name=${i%$delimiter*}
         echo -n "${flags_value[$flag_name]} "
     done
 
 }
-get_flags "abcd=10 efg=234567890 b=opa rtyui" "abcd=2001 efg=20"
-echo ""
+main(){
+    local input_standard="-file -path=. -language=c -flags"
+    local input_user="$@"
+    local values=$(get_flags "$input_standard" "$input_user")
+
+    echo $values
+}
+
+main "$@"
