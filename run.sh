@@ -45,6 +45,9 @@ FILE_PATH=""
 LANGUAGE=""
 FLAGS_ADDON=""
 
+FILE_INPUT=""
+FILE_OUTPUT=""
+
 abort(){
     local message="$1"
     echo -e "$RED_COLOR$message$NOR_COLOR"
@@ -62,12 +65,20 @@ get_flags(){ # option mask | user input | delimter
 
     declare -A flags_value
     for i in $flags_default;do
-        flags_value[${i%$delimiter*}]=${i#*$delimiter}
+        flag_name=${i%${delimiter}*}
+        flag_value=${i#*${delimiter}}
+        if [[ $flag_value = $flag_name ]];then
+            flag_value=0
+        fi
+        flags_value[$flag_name]=$flag_value
     done
     #
     for i in $flags_user;do
-        flag_name=${i%$delimiter*}
-        flag_value=${i#*$delimiter}
+        flag_name=${i%${delimiter}*}
+        flag_value=${i#*${delimiter}}
+        if [[ $flag_value = $flag_name ]];then
+            flag_value=1
+        fi
         if [[ ! " ${!flags_value[@]} " =~ [[:space:]]${flag_name}[[:space:]] ]];then
             continue
         fi
@@ -82,14 +93,21 @@ get_flags(){ # option mask | user input | delimter
 }
 
 check_command(){ # user input -> path_file \n language \n flags
-    local input_standard="--file --path=. --language --flags"
+    local input_standard="--file --path=. --language --flags -i -o -io"
     local input_user="$@"
     local values=($(get_flags "$input_standard" "$input_user"))
+    # echo ${values[@]}
 
     local file=${values[0]}
     local file_path=(${values[1]})
+
     local language=${values[2]}
     local flags_addon=${values[3]}
+
+    local file_input=${values[4]}
+    local file_output=${values[5]}
+    local file_io=${values[6]} # input & output
+
     ##
     file_path=($(find $file_path -type f -name $file))
     if [[ ${#file_path[@]} -gt 1 ]];then
@@ -101,7 +119,7 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
-    if [[ $language = $OPTION_LANGUAGE ]];then
+    if [[ $language = 0 ]];then
         language=${file#*.}
     fi
     if [[ ! " ${LANGUAGE_ABLE[@]} " =~ [[:space:]]$language[[:space:]] ]];then
@@ -110,15 +128,24 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
-    if [[ $flags_addon = $OPTION_FLAGS_ADDON ]];then
+    if [[ $flags_addon = 0 ]];then
         flags_addon=""
     fi
 
     #
+    if [[ $file_io = 1 ]];then
+        file_input=$file_io
+    fi
+    if [[ $file_io = 1 ]];then
+        file_output=$file_io
+    fi
+
     #
     FILE_PATH=$file_path
     LANGUAGE=$language
     FLAGS_ADDON=$flags_addon
+    FILE_INPUT=$file_input
+    FILE_OUTPUT=$file_output
 }
 
 main(){
@@ -136,11 +163,30 @@ main(){
 
     echo -e "$compiler $compiler_flags $FILE_PATH\n"
     if [[ " ${LANGUAGE_DYNAMIC[@]} " =~ [[:space:]]$language[[:space:]] ]];then
-        (($compiler $FILE_PATH $compiler_flags) < $FILE_INPUT_NAME) > $FILE_OUTPUT_NAME
+        run="$compiler $FILE_PATH $compiler_flags"
+        if [[ $FILE_INPUT = 1 ]];then
+            run="$run < \$FILE_INPUT"
+        fi
+        if [[ $FILE_OUTPUT = 1 ]];then
+            run="$run > \$FILE_OUTPUT"
+        fi
+
+        echo $run
+        eval "$run"
+
         exit
     fi
-    ($compiler $compiler_flags $FILE_PATH $FLAGS_ADDON) < $FILE_INPUT_NAME
-    ./$FILE_MAIN_NAME < $FILE_INPUT_NAME > $FILE_OUTPUT_NAME
+    ($compiler $compiler_flags $FILE_PATH $FLAGS_ADDON)
+    run="./$FILE_MAIN_NAME"
+    if [[ $FILE_INPUT = 1 ]];then
+        run="$run < $FILE_INPUT_NAME"
+    fi
+    if [[ $FILE_OUTPUT = 1 ]];then
+        run="$run > $FILE_OUTPUT_NAME"
+    fi
+
+    echo $run
+    eval "$run"
 }
 
 main "$@"
