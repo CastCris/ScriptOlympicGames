@@ -312,24 +312,3 @@ main(){
 }
 
 main "$@"
-: '
-input_user="$@"
-echo "-"
-while [[ ${#input_user} -gt 0 ]];do
-    flag_name=$(flag_next_get "$input_user")
-    flag_value=$(flag_value_get "$input_user")
-    echo "Flag name $flag_name+"
-    echo "Flag value $flag_value-"
-
-    input_user="$(update_line "$input_user")"
-    echo $input_user
-
-    echo
-done
-echo "-"
-
-input_user="$@"
-line_flags_names "$input_user"
-line_flags_values "$input_user"
-# line_flags_values_f "--file --path . --language --flags -i -o -io -f -p -l" "$input_user"
-'
