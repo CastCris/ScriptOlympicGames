@@ -6,7 +6,7 @@ OPTION_PATH='--path'
 OPTION_LANGUAGE='--language'
 OPTION_FLAGS_ADDON='--flags'
 OPTION_EMPTY="0"
-
+OPTION_DELIMITER='#'
 ##
 FILE_INPUT_NAME="input.txt"
 FILE_OUTPUT_NAME="output.txt"
@@ -56,6 +56,16 @@ abort(){
     exit
 }
 
+
+IFS_change(){
+    OIFS=$IFS
+    IFS=$1
+}
+
+IFS_return(){
+    IFS=$OIFS
+}
+
 ##
 flag_valid(){
     local string="$1"
@@ -67,11 +77,23 @@ flag_valid(){
     return
 }
 
+#
+line_update(){ # update_line
+    local arguments=($@)
+    for i in `seq 1 $((${#arguments[@]}-1))`;do
+        if [[ $(flag_valid ${arguments[$i]}) = 0 ]];then
+            continue
+        fi
+        echo ${arguments[@]:$i}
+        break
+    done
+}
 
-flag_next_get(){
+
+line_flag_name(){
     local arguments=($@)
     for i in ${arguments[@]};do
-        if [[ $(flag_valid $i) = 1 ]];then
+        if [[ $(flag_valid $i) = 0 ]];then
             continue
         fi
         echo $i
@@ -80,7 +102,7 @@ flag_next_get(){
     echo 0
 }
 
-flag_value_get(){
+line_flag_value(){
     local arguments=($@)
     for i in `seq 1 $((${#arguments[@]}-1))`;do
         if [[ $(flag_valid ${arguments[$i]}) = 1 ]] && [[ $i = 1 ]];then
@@ -96,48 +118,73 @@ flag_value_get(){
     echo ${arguments[@]:1}
 }
 
-update_line(){
-    local arguments=($@)
-    for i in `seq 1 $((${#arguments[@]}-1))`;do
-        if [[ $(flag_valid ${arguments[$i]}) = 0 ]];then
-            continue
-        fi
-        echo ${arguments[@]:$i}
-        break
+
+line_flags_names(){
+    local line="$@"
+    while [[ ${#line} -gt 0 ]];do
+        line_flag_name "$line"
+        line="$(line_update "$line")"
     done
 }
 
-get_flags(){ # option mask | user input
+line_flags_values(){
+    local line="$@"
+    while [[ ${#line} -gt 0 ]];do
+        flag_value=$(line_flag_value "$line")
+        echo -n "$flag_value$OPTION_DELIMITER"
+        line="$(line_update "$line")"
+    done
+    echo
+}
+
+line_flags_values_f(){ # option mask | user input
     local flags_default="$1"
     local flags_user="$2"
 
-    declare -A flags_value
-    for i in $flags_default;do
-        flag_name=${i%${delimiter}*}
-        flag_value=${i#*${delimiter}}
-        if [[ $flag_value = $flag_name ]];then
-            flag_value=0
-        fi
-        flags_value[$flag_name]=$flag_value
+    declare -A flags_values
+    flags_default_names=($(line_flags_names "$flags_default"))
+    flags_default_values="$(line_flags_values "$flags_default")"
+    IFS_change $OPTION_DELIMITER
+    flags_default_values=($flags_default_values)
+    IFS_return
+
+    # echo ${flags_default_names[@]}
+    # echo ${flags_default_values[@]}
+
+    for i in ${!flags_default_names[@]};do
+        flag_name=${flags_default_names[$i]}
+        flag_value=${flags_default_values[$i]}
+
+        flags_values[$flag_name]=$flag_value
     done
-    #
-    for i in $flags_user;do
-        flag_name=${i%${delimiter}*}
-        flag_value=${i#*${delimiter}}
-        if [[ $flag_value = $flag_name ]];then
-            flag_value=1
-        fi
-        if [[ ! " ${!flags_value[@]} " =~ [[:space:]]${flag_name}[[:space:]] ]];then
+    
+    flags_user_names=($(line_flags_names "$flags_user"))
+    flags_user_values="$(line_flags_values "$flags_user")"
+    IFS_change $OPTION_DELIMITER
+    flags_user_values=($flags_user_values)
+    IFS_return
+
+    # echo ${flags_user_names[@]}
+    # echo ${flags_user_values[@]}
+    
+    for i in ${!flags_user_names[@]};do
+        flag_name=${flags_user_names[$i]}
+        flag_value=${flags_user_values[$i]}
+        if [[ ! " ${!flags_values[@]} " =~ [[:space:]]$flag_name[[:space:]] ]];then
             continue
         fi
-        flags_value[$flag_name]=${flag_value}
+        if [ -z "$flag_value" ];then
+            continue
+        fi
+
+        flags_values[$flag_name]=$flag_value
     done
-    #
-    for i in $flags_default;do
-        flag_name=${i%$delimiter*}
-        echo -n "${flags_value[$flag_name]} "
+
+    for i in ${flags_default_names[@]};do
+        echo "$i ${flags_values[$i]}"
     done
 }
+
 get_no_empty_options(){
     local options=($@)
     for i in ${options[@]};do
@@ -246,6 +293,7 @@ main(){
 }
 
 # main "$@"
+: '
 input_user="$@"
 echo "-"
 while [[ ${#input_user} -gt 0 ]];do
@@ -260,3 +308,8 @@ while [[ ${#input_user} -gt 0 ]];do
     echo
 done
 echo "-"
+'
+# line_flags_names "$@"
+input_user="$@"
+line_flags_values "$input_user"
+line_flags_values_f "-f opa -j japao" "$input_user"
