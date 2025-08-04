@@ -164,6 +164,7 @@ main(){
     echo -e "$compiler $compiler_flags $FILE_PATH\n"
     if [[ " ${LANGUAGE_DYNAMIC[@]} " =~ [[:space:]]$language[[:space:]] ]];then
         run="$compiler $FILE_PATH $compiler_flags"
+
         if [[ $FILE_INPUT = 1 ]];then
             run="$run < \$FILE_INPUT"
         fi
@@ -176,7 +177,13 @@ main(){
 
         exit
     fi
+
+    #
     ($compiler $compiler_flags $FILE_PATH $FLAGS_ADDON)
+    if [[ $? -ne 0 ]];then
+        abort "A compilation error occurs"
+    fi
+
     run="./$FILE_MAIN_NAME"
     if [[ $FILE_INPUT = 1 ]];then
         run="$run < $FILE_INPUT_NAME"
