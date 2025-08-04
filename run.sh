@@ -5,6 +5,7 @@ OPTION_FILE='--file'
 OPTION_PATH='--path'
 OPTION_LANGUAGE='--language'
 OPTION_FLAGS_ADDON='--flags'
+OPTION_EMPTY="0"
 
 ##
 FILE_INPUT_NAME="input.txt"
@@ -48,20 +49,67 @@ FLAGS_ADDON=""
 FILE_INPUT=""
 FILE_OUTPUT=""
 
+# / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / #
 abort(){
     local message="$1"
     echo -e "$RED_COLOR$message$NOR_COLOR"
     exit
 }
 
+##
+flag_valid(){
+    local string="$1"
+    if [[ ${string:0:1} = '-' ]];then
+        echo "1"
+        return
+    fi
+    echo "0"
+    return
+}
 
-get_flags(){ # option mask | user input | delimter
+
+flag_next_get(){
+    local arguments=($@)
+    for i in ${arguments[@]};do
+        if [[ $(flag_valid $i) = 1 ]];then
+            continue
+        fi
+        echo $i
+        return
+    done
+    echo 0
+}
+
+flag_value_get(){
+    local arguments=($@)
+    for i in `seq 1 $((${#arguments[@]}-1))`;do
+        if [[ $(flag_valid ${arguments[$i]}) = 1 ]] && [[ $i = 1 ]];then
+            echo $OPTION_EMPTY
+            return
+        fi
+
+        if [[ $(flag_valid ${arguments[$i]}) = 1 ]];then
+            echo ${arguments[@]:1:$(($i-1))}
+            return
+        fi
+    done
+    echo ${arguments[@]:1}
+}
+
+update_line(){
+    local arguments=($@)
+    for i in `seq 1 $((${#arguments[@]}-1))`;do
+        if [[ $(flag_valid ${arguments[$i]}) = 0 ]];then
+            continue
+        fi
+        echo ${arguments[@]:$i}
+        break
+    done
+}
+
+get_flags(){ # option mask | user input
     local flags_default="$1"
     local flags_user="$2"
-    local delimiter="$3"
-    if [[ ${#delimiter} -gt 1 ]] || [[ ${#delimiter} -eq 0 ]];then
-        delimiter='='
-    fi
 
     declare -A flags_value
     for i in $flags_default;do
@@ -89,24 +137,33 @@ get_flags(){ # option mask | user input | delimter
         flag_name=${i%$delimiter*}
         echo -n "${flags_value[$flag_name]} "
     done
-
+}
+get_no_empty_options(){
+    local options=($@)
+    for i in ${options[@]};do
+        if [[ $i = $OPTION_EMPTY ]];then
+            continue
+        fi
+        echo $i
+        break
+    done
 }
 
+# / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / #
 check_command(){ # user input -> path_file \n language \n flags
-    local input_standard="--file --path=. --language --flags -i -o -io"
+    local input_standard="--file --path . --language --flags -i -o -io -f -p -l"
     local input_user="$@"
     local values=($(get_flags "$input_standard" "$input_user"))
-    # echo ${values[@]}
+    echo ${values[@]}
 
-    local file=${values[0]}
-    local file_path=(${values[1]})
+    local file=$(get_no_empty_options "${values[0]} ${values[7]}")
+    local file_path=$(get_no_empty_options "${values[1]} ${values[8]}")
 
-    local language=${values[2]}
+    local language=$(get_no_empty_options "${values[2]} ${values[9]}")
     local flags_addon=${values[3]}
 
-    local file_input=${values[4]}
-    local file_output=${values[5]}
-    local file_io=${values[6]} # input & output
+    local file_input=$(get_no_empty_options "${values[4]} ${values[6]}")
+    local file_output=$(get_no_empty_options "${values[5]} ${values[6]}")
 
     ##
     file_path=($(find $file_path -type f -name $file))
@@ -119,7 +176,7 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
-    if [[ $language = 0 ]];then
+    if [[ $language = $OPTION_EMPTY ]];then
         language=${file#*.}
     fi
     if [[ ! " ${LANGUAGE_ABLE[@]} " =~ [[:space:]]$language[[:space:]] ]];then
@@ -128,16 +185,8 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
-    if [[ $flags_addon = 0 ]];then
+    if [[ $flags_addon = $OPTION_EMPTY ]];then
         flags_addon=""
-    fi
-
-    #
-    if [[ $file_io = 1 ]];then
-        file_input=$file_io
-    fi
-    if [[ $file_io = 1 ]];then
-        file_output=$file_io
     fi
 
     #
@@ -196,4 +245,18 @@ main(){
     eval "$run"
 }
 
-main "$@"
+# main "$@"
+input_user="$@"
+echo "-"
+while [[ ${#input_user} -gt 0 ]];do
+    flag_name=$(flag_next_get "$input_user")
+    flag_value=$(flag_value_get "$input_user")
+    echo "Flag name $flag_name+"
+    echo "Flag value $flag_value-"
+
+    input_user="$(update_line "$input_user")"
+    echo $input_user
+
+    echo
+done
+echo "-"
