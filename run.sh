@@ -104,6 +104,7 @@ line_flag_name(){
 
 line_flag_value(){
     local arguments=($@)
+    local index=1
     for i in `seq 1 $((${#arguments[@]}-1))`;do
         if [[ $(flag_valid ${arguments[$i]}) = 1 ]] && [[ $i = 1 ]];then
             echo $OPTION_EMPTY
@@ -111,11 +112,27 @@ line_flag_value(){
         fi
 
         if [[ $(flag_valid ${arguments[$i]}) = 1 ]];then
-            echo ${arguments[@]:1:$(($i-1))}
-            return
+            index=$(($i-1))
+            break
         fi
     done
-    echo ${arguments[@]:1}
+
+    if [[ ${#arguments[@]} = 1 ]] || [[ $(flag_valid ${arguments[0]}) = 0 ]];then
+        echo $OPTION_EMPTY
+        return
+    fi
+
+    for i in `seq 1 $index`;do
+        if [[ ${arguments[$i]:0:1} = '\' ]];then
+            echo -n ${arguments[$i]:1}
+            continue
+        fi
+        echo -n ${arguments[$i]}
+    done
+
+    if [[ $index -gt 0 ]];then
+        return
+    fi
 }
 
 
@@ -148,8 +165,8 @@ line_flags_values_f(){ # option mask | user input
     flags_default_values=($flags_default_values)
     IFS_return
 
-    # echo ${flags_default_names[@]}
-    # echo ${flags_default_values[@]}
+    #echo ${flags_default_names[@]}
+    #echo ${flags_default_values[@]}
 
     for i in ${!flags_default_names[@]};do
         flag_name=${flags_default_names[$i]}
@@ -181,7 +198,7 @@ line_flags_values_f(){ # option mask | user input
     done
 
     for i in ${flags_default_names[@]};do
-        echo "$i ${flags_values[$i]}"
+        echo "${flags_values[$i]}"
     done
 }
 
@@ -192,16 +209,17 @@ get_no_empty_options(){
             continue
         fi
         echo $i
-        break
+        return
     done
+    echo $OPTION_EMPTY
 }
 
 # / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / #
 check_command(){ # user input -> path_file \n language \n flags
     local input_standard="--file --path . --language --flags -i -o -io -f -p -l"
     local input_user="$@"
-    local values=($(get_flags "$input_standard" "$input_user"))
-    echo ${values[@]}
+    local values=($(line_flags_values_f "$input_standard" "$input_user"))
+    # echo ${values[@]}
 
     local file=$(get_no_empty_options "${values[0]} ${values[7]}")
     local file_path=$(get_no_empty_options "${values[1]} ${values[8]}")
@@ -223,6 +241,7 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
+    echo "$language"
     if [[ $language = $OPTION_EMPTY ]];then
         language=${file#*.}
     fi
@@ -251,13 +270,13 @@ main(){
     local compiler=${LANGUAGE_COMPILER[$LANGUAGE]}
     local compiler_flags="${COMPILER_FLAGS[$compiler]}"
 
-    FLAGS_ADDON="$FLAGS_ADDON ${COMPILER_FLAGSADDON[$compiler]}"
+    FLAGS_ADDON="${COMPILER_FLAGSADDON[$compiler]} $FLAGS_ADDON"
     
     if [ ! -d $FILE_INPUT_NAME ];then
         touch $FILE_INPUT_NAME
     fi
 
-    echo -e "$compiler $compiler_flags $FILE_PATH\n"
+    echo -e "$compiler $compiler_flags $FILE_PATH $FLAGS_ADDON\n"
     if [[ " ${LANGUAGE_DYNAMIC[@]} " =~ [[:space:]]$language[[:space:]] ]];then
         run="$compiler $FILE_PATH $compiler_flags"
 
@@ -292,7 +311,7 @@ main(){
     eval "$run"
 }
 
-# main "$@"
+main "$@"
 : '
 input_user="$@"
 echo "-"
@@ -308,8 +327,9 @@ while [[ ${#input_user} -gt 0 ]];do
     echo
 done
 echo "-"
-'
-# line_flags_names "$@"
+
 input_user="$@"
+line_flags_names "$input_user"
 line_flags_values "$input_user"
-line_flags_values_f "-f opa -j japao" "$input_user"
+# line_flags_values_f "--file --path . --language --flags -i -o -io -f -p -l" "$input_user"
+'
