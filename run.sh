@@ -6,6 +6,7 @@ OPTION_PATH='--path'
 OPTION_LANGUAGE='--language'
 OPTION_FLAGS_ADDON='--flags'
 OPTION_EMPTY="0"
+OPTION_INCLUDE="1"
 OPTION_DELIMITER='#'
 ##
 FILE_INPUT_NAME="input.txt"
@@ -103,11 +104,12 @@ line_flag_name(){
 }
 
 line_flag_value(){
-    local arguments=($@)
+    local arguments=($1)
+    local argument_empty_value=$2
     local index=1
     for i in `seq 1 $((${#arguments[@]}-1))`;do
         if [[ $(flag_valid ${arguments[$i]}) = 1 ]] && [[ $i = 1 ]];then
-            echo $OPTION_EMPTY
+            echo $argument_empty_value
             return
         fi
 
@@ -117,8 +119,8 @@ line_flag_value(){
         fi
     done
 
-    if [[ ${#arguments[@]} = 1 ]] || [[ $(flag_valid ${arguments[0]}) = 0 ]];then
-        echo $OPTION_EMPTY
+    if [[ $(flag_valid ${arguments[0]}) = 0 ]] || [[ ${#arguments[@]} = 1 ]];then
+        echo $argument_empty_value
         return
     fi
 
@@ -129,10 +131,6 @@ line_flag_value(){
         fi
         echo -n ${arguments[$i]}
     done
-
-    if [[ $index -gt 0 ]];then
-        return
-    fi
 }
 
 
@@ -145,9 +143,10 @@ line_flags_names(){
 }
 
 line_flags_values(){
-    local line="$@"
+    local line="$1"
+    local option_empty="$2"
     while [[ ${#line} -gt 0 ]];do
-        flag_value=$(line_flag_value "$line")
+        flag_value=$(line_flag_value "$line" "$option_empty")
         echo -n "$flag_value$OPTION_DELIMITER"
         line="$(line_update "$line")"
     done
@@ -159,8 +158,8 @@ line_flags_values_f(){ # option mask | user input
     local flags_user="$2"
 
     declare -A flags_values
-    flags_default_names=($(line_flags_names "$flags_default"))
-    flags_default_values="$(line_flags_values "$flags_default")"
+    flags_default_names=($(line_flags_names "$flags_default" $OPTION_EMPTY))
+    flags_default_values="$(line_flags_values "$flags_default" $OPTION_EMPTY)"
     IFS_change $OPTION_DELIMITER
     flags_default_values=($flags_default_values)
     IFS_return
@@ -175,8 +174,8 @@ line_flags_values_f(){ # option mask | user input
         flags_values[$flag_name]=$flag_value
     done
     
-    flags_user_names=($(line_flags_names "$flags_user"))
-    flags_user_values="$(line_flags_values "$flags_user")"
+    flags_user_names=($(line_flags_names "$flags_user" $OPTION_INCLUDE))
+    flags_user_values="$(line_flags_values "$flags_user" $OPTION_INCLUDE)"
     IFS_change $OPTION_DELIMITER
     flags_user_values=($flags_user_values)
     IFS_return
@@ -219,7 +218,7 @@ check_command(){ # user input -> path_file \n language \n flags
     local input_standard="--file --path . --language --flags -i -o -io -f -p -l"
     local input_user="$@"
     local values=($(line_flags_values_f "$input_standard" "$input_user"))
-    # echo ${values[@]}
+    echo ${values[@]}
 
     local file=$(get_no_empty_options "${values[0]} ${values[7]}")
     local file_path=$(get_no_empty_options "${values[1]} ${values[8]}")
@@ -241,7 +240,6 @@ check_command(){ # user input -> path_file \n language \n flags
     fi
 
     #
-    echo "$language"
     if [[ $language = $OPTION_EMPTY ]];then
         language=${file#*.}
     fi
@@ -312,3 +310,25 @@ main(){
 }
 
 main "$@"
+: '
+input_user="$@"
+echo "-"
+while [[ ${#input_user} -gt 0 ]];do
+    flag_name=$(flag_next_get "$input_user")
+    flag_value=$(flag_value_get "$input_user")
+    echo "Flag name $flag_name+"
+    echo "Flag value $flag_value-"
+
+    input_user="$(update_line "$input_user")"
+    echo $input_user
+
+    echo
+done
+echo "-"
+
+input_standard="--file --path . --language --flags -i -o -io -f -p -l"
+input_user="$@"
+line_flags_names "$input_standard"
+line_flags_values "$input_user" "$OPTION_INCLUDE"
+line_flags_values_f "$input_standard" "$input_user"
+'
