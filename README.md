@@ -8,7 +8,7 @@ Here, you can find solutions to several popular open contests, such as, only abl
 For a best stream of the code, I created the file run. It is a file written in shellscript language. You can quickly run any existing file able to compile typing:
 
 ```bash
-./run --file=my_file.c
+./run -f my_file.c
 ```
 
 If you have any question about it, type:
