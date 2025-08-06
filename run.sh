@@ -218,7 +218,7 @@ check_command(){ # user input -> path_file \n language \n flags
     local input_standard="--file --path . --language --flags -i -o -io -f -p -l"
     local input_user="$@"
     local values=($(line_flags_values_f "$input_standard" "$input_user"))
-    echo ${values[@]}
+    # echo ${values[@]}
 
     local file=$(get_no_empty_options "${values[0]} ${values[7]}")
     local file_path=$(get_no_empty_options "${values[1]} ${values[8]}")
@@ -275,14 +275,14 @@ main(){
     fi
 
     echo -e "$compiler $compiler_flags $FILE_PATH $FLAGS_ADDON\n"
-    if [[ " ${LANGUAGE_DYNAMIC[@]} " =~ [[:space:]]$language[[:space:]] ]];then
+    if [[ " ${LANGUAGE_DYNAMIC[@]} " =~ [[:space:]]$LANGUAGE[[:space:]] ]];then
         run="$compiler $FILE_PATH $compiler_flags"
 
         if [[ $FILE_INPUT = 1 ]];then
-            run="$run < \$FILE_INPUT"
+            run="$run < $FILE_INPUT_NAME"
         fi
         if [[ $FILE_OUTPUT = 1 ]];then
-            run="$run > \$FILE_OUTPUT"
+            run="$run > $FILE_OUTPUT_NAME"
         fi
 
         echo $run
