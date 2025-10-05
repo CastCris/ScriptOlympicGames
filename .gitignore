@@ -1,8 +1,10 @@
 *
 !*/
+
 !.gitignore
 !README.md
+!run.sh
+
 !*.c
 !*.cpp
 !*.py
-!run.sh
