@@ -1,19 +1,22 @@
 #!/bin/bash
 
 ## FLAGS
-OPTION_FILE='--file'
-OPTION_PATH='--path'
-OPTION_LANGUAGE='--language'
-OPTION_FLAGS_ADDON='--flags'
+OPTION_PATH=
 OPTION_EMPTY="0"
 OPTION_INCLUDE="1"
 OPTION_DELIMITER='#'
-##
+
+OPTION_DEFAULT="--file --path . --language --flags -i -o -io -f -p -l"
+
+FLAG_VALID="1"
+FLAG_INVALID="0"
+
+## Default io files name
 FILE_INPUT_NAME="input.txt"
 FILE_OUTPUT_NAME="output.txt"
 FILE_MAIN_NAME="main"
 
-##
+## Language Configuration
 LANGUAGE_ABLE=(c cpp c++ py)
 declare -A LANGUAGE_COMPILER=(
     ["c"]="gcc"
@@ -38,11 +41,12 @@ declare -A COMPILER_FLAGSADDON=(
     ["python3"]=""
 )
 
-##
+## Color vars
 RED_COLOR='\e[0;31m'
 YEL_COLOR='\e[0;33m'
 NOR_COLOR='\e[0m'
-##
+
+## Global vars
 FILE_PATH=""
 LANGUAGE=""
 FLAGS_ADDON=""
@@ -71,10 +75,10 @@ IFS_return(){
 flag_valid(){
     local string="$1"
     if [[ ${string:0:1} = '-' ]];then
-        echo "1"
+        echo "$FLAG_VALID"
         return
     fi
-    echo "0"
+    echo "$FLAG_INVALID"
     return
 }
 
@@ -82,7 +86,7 @@ flag_valid(){
 line_update(){ # update_line
     local arguments=($@)
     for i in `seq 1 $((${#arguments[@]}-1))`;do
-        if [[ $(flag_valid ${arguments[$i]}) = 0 ]];then
+        if [[ $(flag_valid ${arguments[$i]}) = $FLAG_INVALID ]];then
             continue
         fi
         echo ${arguments[@]:$i}
@@ -94,7 +98,7 @@ line_update(){ # update_line
 line_flag_name(){
     local arguments=($@)
     for i in ${arguments[@]};do
-        if [[ $(flag_valid $i) = 0 ]];then
+        if [[ $(flag_valid $i) = $FLAG_INVALID ]];then
             continue
         fi
         echo $i
@@ -108,18 +112,18 @@ line_flag_value(){
     local argument_empty_value=$2
     local index=1
     for i in `seq 1 $((${#arguments[@]}-1))`;do
-        if [[ $(flag_valid ${arguments[$i]}) = 1 ]] && [[ $i = 1 ]];then
-            echo $argument_empty_value
+        if [[ $(flag_valid ${arguments[$i]}) = $FLAG_VALID ]] && [[ $i = 1 ]];then
+            echo "$argument_empty_value"
             return
         fi
 
-        if [[ $(flag_valid ${arguments[$i]}) = 1 ]];then
+        if [[ $(flag_valid ${arguments[$i]}) = $FLAG_VALID ]];then
             index=$(($i-1))
             break
         fi
     done
 
-    if [[ $(flag_valid ${arguments[0]}) = 0 ]] || [[ ${#arguments[@]} = 1 ]];then
+    if [[ $(flag_valid ${arguments[0]}) = $FLAG_INVALID ]] || [[ ${#arguments[@]} = 1 ]];then
         echo $argument_empty_value
         return
     fi
@@ -215,10 +219,9 @@ get_no_empty_options(){
 
 # / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / #
 check_command(){ # user input -> path_file \n language \n flags
-    local input_standard="--file --path . --language --flags -i -o -io -f -p -l"
+    local input_standard="$OPTION_DEFAULT"
     local input_user="$@"
     local values=($(line_flags_values_f "$input_standard" "$input_user"))
-    # echo ${values[@]}
 
     local file=$(get_no_empty_options "${values[0]} ${values[7]}")
     local file_path=$(get_no_empty_options "${values[1]} ${values[8]}")
@@ -310,8 +313,8 @@ main(){
 }
 
 main "$@"
+# check_command "$@"
 : '
-input_user="$@"
 echo "-"
 while [[ ${#input_user} -gt 0 ]];do
     flag_name=$(flag_next_get "$input_user")
@@ -329,6 +332,6 @@ echo "-"
 input_standard="--file --path . --language --flags -i -o -io -f -p -l"
 input_user="$@"
 line_flags_names "$input_standard"
-line_flags_values "$input_user" "$OPTION_INCLUDE"
+line_flags_values "$input_user" "$OPTION_DELIMITER"
 line_flags_values_f "$input_standard" "$input_user"
 '
