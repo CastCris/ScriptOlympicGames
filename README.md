@@ -1,9 +1,5 @@
 # run
 
-<u>focus on solving contest problems, not typing commands</u>
-
----
-
 ## NAME
 
 **run** — focus on solving contest problems, not typing commands
@@ -23,7 +19,9 @@ It **helps reduce repetitive typing** and **simplifies file organization** by au
 
 - language detection  
 - input/output redirection  
-- compilation or execution flags  
+- compilation or execution flags
+  
+The run command have suport to c++, c and python files.
 
 ---
 
