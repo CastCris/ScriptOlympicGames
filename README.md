@@ -21,7 +21,7 @@ It **helps reduce repetitive typing** and **simplifies file organization** by au
 - input/output redirection  
 - compilation or execution flags
   
-The run command have suport to c++, c and python files.
+The languages c, c++ and python have support.
 
 ---
 
@@ -50,6 +50,7 @@ If omitted, the language is automatically inferred from the file extension.
 ### **--flags** [flags...]
 
 <u>Additional flags passed to the compiler or interpreter.</u>
+Flags prefixed with '-' must be preceted with backslash key.
 
 ---
 
